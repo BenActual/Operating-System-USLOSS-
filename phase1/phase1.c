@@ -55,7 +55,7 @@ void startup()
    /* Initialize the Ready list, etc. */
    if (DEBUG && debugflag)
       console("startup(): initializing the Ready & Blocked lists\n");
-   ReadyList = NULL;
+   //ReadyList = NULL;
 
    /* Initialize the clock interrupt handler */
 
@@ -167,7 +167,7 @@ void launch()
       console("launch(): started\n");
 
    /* Enable interrupts */
-   enableInterrupts();
+   //enableInterrupts();
 
    /* Call the function passed to fork1, and capture its return value */
    result = Current->start_func(Current->start_arg);
@@ -241,7 +241,7 @@ void dispatcher(void)
    Side Effects -  if system is in deadlock, print appropriate error
 		   and halt.
    ----------------------------------------------------------------------- */
-int sentinel (char * dummy)
+int sentinel (void * dummy)
 {
    if (DEBUG && debugflag)
       console("sentinel(): called\n");
@@ -272,4 +272,8 @@ void disableInterrupts()
   } else
     /* We ARE in kernel mode */
     psr_set( psr_get() & ~PSR_CURRENT_INT );
+    
 } /* disableInterrupts */
+
+
+
