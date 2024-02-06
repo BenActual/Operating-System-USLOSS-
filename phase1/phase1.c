@@ -17,7 +17,8 @@ void dispatcher(void);
 void launch();
 static void enableInterrupts();
 static void check_deadlock();
-
+int kernel_or_user(void);
+void disableInterrupts();
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -27,6 +28,7 @@ int debugflag = 1;
 /* the process table */
 proc_struct ProcTable[MAXPROC];
 
+
 /* Process lists  */
 
 /* current process ID */
@@ -34,6 +36,8 @@ proc_ptr Current;
 
 /* the next pid to be assigned */
 unsigned int next_pid = SENTINELPID;
+
+int num_procs = 0;
 
 
 /* -------------------------- Functions ----------------------------------- */
@@ -47,17 +51,32 @@ unsigned int next_pid = SENTINELPID;
    ----------------------------------------------------------------------- */
 void startup()
 {
-   int i;      /* loop index */
+  
    int result; /* value returned by call to fork1() */
 
    /* initialize the process table */
+   for (int i = 0; i < 50; i++)
+   {
+      ProcTable[i].next_proc_ptr = NULL;
+      ProcTable[i].child_proc_ptr = NULL;
+      ProcTable[i].next_sibling_ptr = NULL;
+      ProcTable[i].pid = NULL; // Use 0 or a specific invalid pid if appropriate
+      ProcTable[i].priority = NULL; // Use 0 or a default priority
+      ProcTable[i].stacksize = NULL; // Use 0 or a default stack size
+      ProcTable[i].status = NULL; // READY, BLOCKED, QUIT, etc. (use specific constants if you have them)
+      ProcTable[i].parent_pid = NULL;  /*IF -1 NO PARENT EXISTS*/
+      ProcTable[i].kids = NULL;
+      ProcTable[i].kid_num = NULL;
+      ProcTable[i].status = 0;
+   }
 
    /* Initialize the Ready list, etc. */
    if (DEBUG && debugflag)
       console("startup(): initializing the Ready & Blocked lists\n");
-   //ReadyList = NULL;
+   
 
    /* Initialize the clock interrupt handler */
+   
 
    /* startup a sentinel process */
    if (DEBUG && debugflag)
@@ -78,6 +97,7 @@ void startup()
       console("startup(): fork1 for start1 returned an error, halting...\n");
       halt(1);
    }
+   
 
    console("startup(): Should not see this message! ");
    console("Returned from fork1 call that created start1\n");
@@ -112,15 +132,43 @@ void finish()
    ------------------------------------------------------------------------ */
 int fork1(char *name, int (*f)(char *), char *arg, int stacksize, int priority)
 {
-   int proc_slot;
+   int proc_slot ;
+   
 
-   if (DEBUG && debugflag)
+    if (DEBUG && debugflag)
       console("fork1(): creating process %s\n", name);
-
+   disableInterrupts();
    /* test if in kernel mode; halt if in user mode */
-
+   if (!(kernel_or_user()))
+   {
+      console("Process %d -- called in user mode. Halting process.\n", Current->pid);
+      halt(1);
+   }
    /* Return if stack size is too small */
-
+   if (stacksize < USLOSS_MIN_STACK)
+   {
+      return (-2);
+   }
+   /*Return if function pointer is NULL*/
+   if (f == NULL)
+   {
+      return (-1);
+   }
+   /*Return if name is NULL*/
+   if (name == NULL)
+   {
+      return (-1);
+   }
+   /*Return if Priority is out of range*/
+   if (strcmp(name, "sentinel") && (priority < 1 || priority > 5))
+   {
+      return (-1);
+   }
+   /* Return if maximum processes reached */
+   if (num_procs >= MAXPROC)
+   {
+      return (-1);
+   }
    /* find an empty slot in the process table */
 
    /* fill-in entry in process table */
@@ -139,6 +187,22 @@ int fork1(char *name, int (*f)(char *), char *arg, int stacksize, int priority)
    else
       strcpy(ProcTable[proc_slot].start_arg, arg);
 
+   ProcTable[proc_slot].stack = (char *)malloc(stacksize);
+   ProcTable[proc_slot].stacksize = stacksize;
+   ProcTable[proc_slot].pid = next_pid++;
+   ProcTable[proc_slot].priority = priority;
+   ProcTable[proc_slot].status = READY;
+   ProcTable[proc_slot].proc_table_location = proc_slot;
+   ProcTable[proc_slot].parent_location = -1;
+   ProcTable[proc_slot].next_proc_ptr = NULL;
+   ProcTable[proc_slot].child_proc_ptr = NULL;
+   ProcTable[proc_slot].next_sibling_ptr = NULL;
+   ProcTable[proc_slot].total_time = 0;
+   ProcTable[proc_slot].startTime = 0;
+   ProcTable[proc_slot].kid_num = 0;
+   ProcTable[proc_slot].quit_code = 0;
+   ProcTable[proc_slot].blocked_by = 0;
+
    /* Initialize context for this process, but use launch function pointer for
     * the initial value of the process's program counter (PC)
     */
@@ -148,6 +212,10 @@ int fork1(char *name, int (*f)(char *), char *arg, int stacksize, int priority)
 
    /* for future phase(s) */
    p1_fork(ProcTable[proc_slot].pid);
+
+    enableInterrupts();
+    return ProcTable[proc_slot].pid;
+   
 
 } /* fork1 */
 
@@ -167,7 +235,7 @@ void launch()
       console("launch(): started\n");
 
    /* Enable interrupts */
-   //enableInterrupts();
+   enableInterrupts();
 
    /* Call the function passed to fork1, and capture its return value */
    result = Current->start_func(Current->start_arg);
@@ -208,7 +276,40 @@ int join(int *code)
    ------------------------------------------------------------------------ */
 void quit(int code)
 {
+   printf("quit() called\n");
+ if (!(kernel_or_user()))
+   {
+      console("Quit() called in user mode. Halting...\n");
+      halt(1);
+   }
+   if (DEBUG && debugflag)
+   {
+      console("quit() has been called on process %d with exit code of %d\n", Current->pid, code);
+   }
+   if (Current->child_proc_ptr != NULL && Current->child_proc_ptr->status != QUIT)
+   {
+      console("quit() has been called while process has living children, halting...\n");
+      halt(1);
+   }
+
+   if (Current->parent_pid == -1)
+   {
+      console("quit() has been called on a process with no parent, halting...\n");
+      halt(1);
+   }
+
+   if (Current->parent_pid != -1)
+   {
+      proc_ptr parent = &ProcTable[Current->parent_location];
+      parent->quit_children_num++;
+      parent->kids_status_list[parent->kid_num] = code;
+      parent->kid_num++;
+   }
+   
+
+   
    p1_quit(Current->pid);
+   
 } /* quit */
 
 
@@ -275,5 +376,23 @@ void disableInterrupts()
     
 } /* disableInterrupts */
 
+void enableInterrupts()
+{
+   if (kernel_or_user() == 0)
+   {
+      // IN USER MODE
+      console("Kernel Error: Not in kernel mode, may not enable interrupts\n");
+      halt(1);
+   }
+   else
+   {
+      // KERNEL MODE
+      psr_set(psr_get() | PSR_CURRENT_INT);
+   }
+}
 
 
+int kernel_or_user(void)
+{
+   return PSR_CURRENT_MODE & psr_get();
+}

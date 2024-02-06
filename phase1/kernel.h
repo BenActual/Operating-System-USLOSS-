@@ -18,6 +18,23 @@ struct proc_struct {
    unsigned int   stacksize;
    int            status;         /* READY, BLOCKED, QUIT, etc. */
    /* other fields as needed... */
+   proc_ptr       quit_children;  // children that have quit
+   int            quit_children_num;  // num of quit children
+   int            total_time;     // amount of time used by the CPU
+   int            startTime;      // time started by CPU - will change on each call
+   int            lastRunTime;    // time ended by CPU
+   int            parent_pid;     /*IF -1 NO PARENT EXISTS*/
+   int            zapped;         // 1 == TRUE 0 == FALSE
+   int            blocked_by;     //pid of process blocking current proccess
+   int            kids;
+   int            kid_num;
+   int            kids_status_list[MAXPROC];
+   int            quit_code;      //if quit, what code is it
+   int            proc_table_location;    //location on process table
+   int            parent_location;        //parent location on process table
+  
+
+
 };
 
 struct psr_bits {
@@ -39,4 +56,10 @@ union psr_values {
 #define MAXPRIORITY 1
 #define SENTINELPID 1
 #define SENTINELPRIORITY LOWEST_PRIORITY
+#define QUIT 1
+#define READY 2
+#define JOIN_BLOCK 3
+#define RUNNING 4
+#define ZAPPED 1
+#define block 5
 
