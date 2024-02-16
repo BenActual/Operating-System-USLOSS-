@@ -1,0 +1,4 @@
+
+*.h
+usloss/build/lib/libusloss.a
+usloss/build/lib/libusloss3.0.2.a
