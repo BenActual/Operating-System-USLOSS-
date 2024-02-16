@@ -686,6 +686,7 @@ int zap(int pid)
    // Check if the function is called from kernel mode
 if (check_mode() == 0) {
    console("Zap called in user mode. Unable to proceed. Halting execution. Process ID: %d\n", pid);
+   halt(1);
 }
 
    
