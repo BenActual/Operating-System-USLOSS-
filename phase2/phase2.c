@@ -280,13 +280,11 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
             return -3;
         }
 
-      if (is_zapped()) {
+      if (is_zapped())
       {
          EnableInterrupts();
          return -3;
       }
-          
-        return 0;
     }
 
     // Check for a process waiting to receive; if so, transfer the message directly.
@@ -307,13 +305,11 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
         unblock_proc(recvPid);
         EnableInterrupts();
 
-      if (is_zapped()) {
-      {
-         EnableInterrupts();
-         return -3;
-      }
-       
-        return 0;
+         if (is_zapped())
+         {
+            EnableInterrupts();
+            return -3;
+         }
     }
 
     // Check for mail slot table overflows.
@@ -327,14 +323,14 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     slot_ptr added_slot = init_slot(slot, mbox_id, msg_ptr, msg_size);
     add_slot_list(added_slot, mbox_ptr);
 
-    EnableInterrupts();
    
     if (is_zapped()) {
       {
          EnableInterrupts();
          return -3;
       }
-          
+    
+    EnableInterrupts();      
     return 0;
 }
  /* MboxSend */
@@ -487,7 +483,7 @@ int MboxRelease(int mbox_id) {
    
 
     // Return the zapped status to indicate if the current process was interrupted.
-    if (is_zapped()) {
+    if (is_zapped())
       {
          EnableInterrupts();
          return -3;
@@ -571,7 +567,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
     }
     add_slot_list(added_slot, mbox_ptr);
 
-   if (is_zapped()) {
+   if (is_zapped())
       {
          EnableInterrupts();
          return -3;
@@ -652,7 +648,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         }
     }
 
-   if (is_zapped()) {
+   if (is_zapped())
       {
          EnableInterrupts();
          return -3;
