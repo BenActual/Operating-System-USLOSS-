@@ -76,6 +76,12 @@ void(*sys_vec[MAXSYSCALLS])(sysargs *args);
    Side Effects - lots since it initializes the phase2 data structures.
    ----------------------------------------------------------------------- */
 int start1(char *arg) {
+    // Ensure this function is called in kernel mode for safety.
+    Check_kernel_mode("start1");
+   
+    // Disable interrupts 
+    DisableInterrupts();
+   
     int kid_pid, status; // Variables for process ID of the child and its termination status.
     int i; // Loop index.
 
@@ -83,12 +89,6 @@ int start1(char *arg) {
     if (DEBUG2 && debugflag2) {
         console("start1(): at beginning\n");
     }
-
-    // Ensure this function is called in kernel mode for safety.
-    Check_kernel_mode("start1");
-
-    // Disable interrupts 
-    DisableInterrupts();
 
    /* Initialize the mail box table, slots, & other data structures.
     * Initialize int_vec and sys_vec, allocate mailboxes for interrupt
@@ -160,10 +160,13 @@ int start1(char *arg) {
    Side Effects - initializes one element of the mail box array. 
    ----------------------------------------------------------------------- */
 int MboxCreate(int slots, int slot_size) {
-    // Ensure we are in kernel mode and disable interrupts for safety.
+   
+    // Ensure we are in kernel mode
     Check_kernel_mode("MboxCreate");
-    DisableInterrupts();
-    
+
+   // disable interrupts for safety.
+   DisableInterrupts();
+   
     // Validate the slot size and slots count right at the start.
     if (slot_size < 0 || slot_size > MAX_MESSAGE) {
         if (DEBUG2 && debugflag2) {
@@ -212,7 +215,10 @@ int MboxCreate(int slots, int slot_size) {
     MailBoxTable[mboxID].max_slot_size = slot_size;
     MailBoxTable[mboxID].slots = 0; // Initialize with no slots currently used.
     MailBoxTable[mboxID].blocked_procs = 0; // Initialize with no processes currently blocked.
-    
+
+   // Re-enable interrupts
+    EnableInterrupts();
+   
     // Successfully return the unique mailbox ID.
     return mboxID;
 }
@@ -245,7 +251,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     }
 
     // Get a pointer to the mailbox.
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // If the mailbox cannot accommodate the message, enable interrupts and return.
     if (mbox_ptr->num_slots != 0 && msg_size > mbox_ptr->max_slot_size) {
@@ -273,7 +279,12 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
             EnableInterrupts();
             return -3;
         }
-        return is_zapped();
+
+      if (is_zapped())
+      {
+         EnableInterrupts();
+         return -3;
+      }
     }
 
     // Check for a process waiting to receive; if so, transfer the message directly.
@@ -293,7 +304,12 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
         int recvPid = mbox_ptr->block_recvlist->next_ptr;
         unblock_proc(recvPid);
         EnableInterrupts();
-        return is_zapped();
+
+         if (is_zapped())
+         {
+            EnableInterrupts();
+            return -3;
+         }
     }
 
     // Check for mail slot table overflows.
@@ -307,8 +323,15 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     slot_ptr added_slot = init_slot(slot, mbox_id, msg_ptr, msg_size);
     add_slot_list(added_slot, mbox_ptr);
 
-    EnableInterrupts();
-    return is_zapped();
+   
+    if (is_zapped()) {
+      {
+         EnableInterrupts();
+         return -3;
+      }
+    
+    EnableInterrupts();      
+    return 0;
 }
  /* MboxSend */
 
@@ -333,11 +356,11 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Update the process table for the current process.
     int pid = getpid();
-    mbox_proc_ptr procPtr = &ProcTable[pid % MAXPROC];
+    mbox_proc_ptr *procPtr = &ProcTable[pid % MAXPROC];
     procPtr->pid = pid;
     procPtr->status = ACTIVE;
     procPtr->message = msg_ptr;
@@ -432,7 +455,7 @@ int MboxRelease(int mbox_id) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Set mailbox status to UNUSED to prevent new operations on it.
     mbox_ptr->status = UNUSED;
@@ -443,7 +466,7 @@ int MboxRelease(int mbox_id) {
         procToSend->mbox_release = 1; // Mark process as released.
         mbox_ptr->block_sendlist = procToSend->next_block_send; // Move to next in list.
         unblock_proc(procToSend->pid); // Unblock the process.
-        // No need to disable interrupts after unblocking, as we're releasing the mailbox.
+        DisableInterrupts();
     }
 
     // Process all blocked processes in the receive list.
@@ -452,15 +475,22 @@ int MboxRelease(int mbox_id) {
         procToRecv->mbox_release = 1; // Mark process as released.
         mbox_ptr->block_recvlist = procToRecv->next_block_recv; // Move to next in list.
         unblock_proc(procToRecv->pid); // Unblock the process.
-        // Similarly, no need to disable interrupts after each unblocking.
+        DisableInterrupts();
     }
 
     // Clear out the mailbox to reset its state fully.
     ResetMailbox(mbox_id);
-    EnableInterrupts();
+   
 
     // Return the zapped status to indicate if the current process was interrupted.
-    return is_zapped();
+    if (is_zapped())
+      {
+         EnableInterrupts();
+         return -3;
+      } 
+
+    EnableInterrupts();
+    return 0;
 }
  /* MboxRelease */
 
@@ -483,7 +513,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate the message size against the maximum slot size for this mailbox.
     if (msg_size > mbox_ptr->max_slot_size) {
@@ -537,6 +567,12 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
     }
     add_slot_list(added_slot, mbox_ptr);
 
+   if (is_zapped())
+      {
+         EnableInterrupts();
+         return -3;
+      }
+      
     EnableInterrupts();
     return 0; // Message successfully queued in a slot.
 }
@@ -559,7 +595,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate message size.
     if (max_msg_size < 0) {
@@ -612,6 +648,12 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         }
     }
 
+   if (is_zapped())
+      {
+         EnableInterrupts();
+         return -3;
+      }
+      
     EnableInterrupts();
     return receivedMsgSize; // Return the size of the received message instead of is_zapped().
 }
@@ -915,10 +957,17 @@ int WaitForDevice(int type, int unit, int *status) {
         default:
             printf("WaitForDevice(): unexpected device type (%d). Halting...\n", type);
             halt(1); // Halt on invalid device type.
-    }
+    } 
 
+    //check if zapped
+    if(result == -3) 
+    {
+        return -1;
+    }
+   
     // Check if the process was zapped while waiting.
-    return (result == -3) ? -1 : 0;
+    //return (result == -3) ? -1 : 0;
+   return 0;
 }
  /* WaitForDevice */
 
