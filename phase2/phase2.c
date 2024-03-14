@@ -360,11 +360,11 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Update the process table for the current process.
     int pid = getpid();
-    mbox_proc_ptr procPtr = &ProcTable[pid % MAXPROC];
+    mbox_proc_ptr *procPtr = &ProcTable[pid % MAXPROC];
     procPtr->pid = pid;
     procPtr->status = ACTIVE;
     procPtr->message = msg_ptr;
@@ -484,10 +484,17 @@ int MboxRelease(int mbox_id) {
 
     // Clear out the mailbox to reset its state fully.
     ResetMailbox(mbox_id);
-    EnableInterrupts();
+   
 
     // Return the zapped status to indicate if the current process was interrupted.
-    return is_zapped();
+    if (is_zapped()) {
+      {
+         EnableInterrupts();
+         return -3;
+      } 
+
+    EnableInterrupts();
+    return 0;
 }
  /* MboxRelease */
 
@@ -510,7 +517,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate the message size against the maximum slot size for this mailbox.
     if (msg_size > mbox_ptr->max_slot_size) {
@@ -564,6 +571,12 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
     }
     add_slot_list(added_slot, mbox_ptr);
 
+   if (is_zapped()) {
+      {
+         EnableInterrupts();
+         return -3;
+      }
+      
     EnableInterrupts();
     return 0; // Message successfully queued in a slot.
 }
@@ -586,7 +599,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate message size.
     if (max_msg_size < 0) {
@@ -639,6 +652,12 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         }
     }
 
+   if (is_zapped()) {
+      {
+         EnableInterrupts();
+         return -3;
+      }
+      
     EnableInterrupts();
     return receivedMsgSize; // Return the size of the received message instead of is_zapped().
 }
@@ -942,10 +961,17 @@ int WaitForDevice(int type, int unit, int *status) {
         default:
             printf("WaitForDevice(): unexpected device type (%d). Halting...\n", type);
             halt(1); // Halt on invalid device type.
-    }
+    } 
 
+    //check if zapped
+    if(result == -3) 
+    {
+        return -1;
+    }
+   
     // Check if the process was zapped while waiting.
-    return (result == -3) ? -1 : 0;
+    //return (result == -3) ? -1 : 0;
+   return 0;
 }
  /* WaitForDevice */
 
