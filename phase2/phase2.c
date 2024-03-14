@@ -746,9 +746,7 @@ void ClockInterruptHandler(int dev, void *punit) {
 
     // Static counter to keep track of clock ticks handled.
     static int tickCount = 0;
-    // Placeholder for a potential message, not utilized in this example.
-    int dummyMsg = 0;
-
+ 
     // Increment the tick count by the defined milliseconds per tick.
     tickCount += CLOCK_MS;
 
