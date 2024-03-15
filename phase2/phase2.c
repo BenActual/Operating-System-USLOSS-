@@ -324,7 +324,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     add_slot_list(added_slot, mbox_ptr);
 
    
-    if (is_zapped()) {
+    if (is_zapped())
       {
          EnableInterrupts();
          return -3;
