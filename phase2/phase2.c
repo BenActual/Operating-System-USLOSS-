@@ -12,12 +12,11 @@
 #include <usloss.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "message.h"
 
 /* ------------------------- Prototypes ----------------------------------- */
 int start1 (char *);
-extern int start2 (char *); 
+extern int start2 (char *);
 
 int MboxCreate(int slots, int slot_size);
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size);
@@ -35,7 +34,7 @@ void ClockInterruptHandler(int dev, void *punit);
 void DiskInterruptHandler(int dev, void *punit);
 void TerminalInterruptHandler(int dev, void *punit);
 void SyscallInterruptHandler(int dev, void *unit);
-void HandleInvalidSyscall(sysargs *args); 
+void HandleInvalidSyscall(sysargs *args);
 void ResetMailbox(int mbox_id);
 void ResetMailSlot(int slot_id);
 void ResetProcessMailSlot(int pid);
@@ -43,9 +42,20 @@ int NextFreeSlot();
 slot_ptr init_slot(int slot_index, int mbox_id, void *msg_ptr, int msg_size);
 int add_slot_list(slot_ptr added_slot, mboxPtr mbox_ptr);
 int check_io();
-int WaitForDevice(int type, int unit, int *status);
+int waitdevice(int type, int unit, int *status);
 
 /* -------------------------- Globals ------------------------------------- */
+
+//MboxCreate placeholders for our IO boxes
+int IOMAILBOX[7];
+
+//define the mailbox numbers in the IOMAILBOX
+#define CLOCKIOMAILBOX 0
+#define DISKIOMAILBOX 1
+#define TERMIOMAILBOX 3
+
+//counter for number of blocked processes on the IO mailbox
+int BLOCKED_IO_PROCESS_MAILBOX = 0;
 
 // Debug flag used to control verbose output for debugging purposes.
 int debugflag2 = 0;
@@ -78,10 +88,10 @@ void(*sys_vec[MAXSYSCALLS])(sysargs *args);
 int start1(char *arg) {
     // Ensure this function is called in kernel mode for safety.
     Check_kernel_mode("start1");
-   
-    // Disable interrupts 
+
+    // Disable interrupts
     DisableInterrupts();
-   
+
     int kid_pid, status; // Variables for process ID of the child and its termination status.
     int i; // Loop index.
 
@@ -101,20 +111,26 @@ int start1(char *arg) {
 
     // Initialize all mailboxes in the mailbox table.
     for (i = 0; i < MAXMBOX; i++) {
-        MailBoxTable[i].mbox_id = i; // Assign unique ID.
+        //MailBoxTable[i].mbox_id = i; //Assign unique ID.
+        MailBoxTable[i].mbox_id = -1;
         ResetMailbox(i); // Initialize mailbox state.
     }
 
     // Initialize all slots in the mailbox slots array.
     for (i = 0; i < MAXSLOTS; i++) {
-        MailBoxSlots[i].slot_id = i; // Assign unique ID.
+        //MailBoxSlots[i].slot_id = i; // Assign unique ID.
+        MailBoxSlots[i].slot_id = -1;
         ResetMailSlot(i); // Initialize slot state.
     }
 
-    // Initialize mailboxes specifically for the clock device handlers.
-    for (i = 0; i < 7; i++) { // Assuming 7 is the number of required mailboxes.
-        MboxCreate(0, MAX_MESSAGE); // Create mailbox with max message size.
-    }
+    // Initialize mailboxes
+    IOMAILBOX[CLOCKIOMAILBOX] = MboxCreate(0, MAX_MESSAGE); //clock box
+    IOMAILBOX[DISKIOMAILBOX] = MboxCreate(0, MAX_MESSAGE); // disk IO box
+    IOMAILBOX[DISKIOMAILBOX+1] = MboxCreate(0, MAX_MESSAGE); //disk IO box
+    IOMAILBOX[TERMIOMAILBOX] = MboxCreate(0, MAX_MESSAGE); //term box
+    IOMAILBOX[TERMIOMAILBOX+1] = MboxCreate(0, MAX_MESSAGE); //term box
+    IOMAILBOX[TERMIOMAILBOX+2] = MboxCreate(0, MAX_MESSAGE); //term box
+    IOMAILBOX[TERMIOMAILBOX+3] = MboxCreate(0, MAX_MESSAGE); //term box
 
     // Set up interrupt vector table with appropriate handlers for devices and syscall.
     int_vec[CLOCK_DEV] = ClockInterruptHandler;
@@ -152,21 +168,21 @@ int start1(char *arg) {
 
 /* ------------------------------------------------------------------------
    Name - MboxCreate
-   Purpose - gets a free mailbox from the table of mailboxes and initializes it 
+   Purpose - gets a free mailbox from the table of mailboxes and initializes it
    Parameters - maximum number of slots in the mailbox and the max size of a msg
                 sent to the mailbox.
    Returns - -1 to indicate that no mailbox was created, or a value >= 0 as the
              mailbox id.
-   Side Effects - initializes one element of the mail box array. 
+   Side Effects - initializes one element of the mail box array.
    ----------------------------------------------------------------------- */
 int MboxCreate(int slots, int slot_size) {
-   
+
     // Ensure we are in kernel mode
     Check_kernel_mode("MboxCreate");
 
    // disable interrupts for safety.
    DisableInterrupts();
-   
+
     // Validate the slot size and slots count right at the start.
     if (slot_size < 0 || slot_size > MAX_MESSAGE) {
         if (DEBUG2 && debugflag2) {
@@ -218,7 +234,7 @@ int MboxCreate(int slots, int slot_size) {
 
    // Re-enable interrupts
     EnableInterrupts();
-   
+
     // Successfully return the unique mailbox ID.
     return mboxID;
 }
@@ -241,17 +257,17 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     // Validate message size.
     if (msg_size < 0 || msg_size > MAX_MESSAGE) {
         console("Message is to large.\n");
-        return -1;     
+        return -1;
     }
 
     // Validate mailbox ID range.
     if (mbox_id < 1 || mbox_id > MAXMBOX) {
         console("The message box ID is not valid.\n");
-        return -1;     
+        return -1;
     }
 
     // Get a pointer to the mailbox.
-    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
 
     // If the mailbox cannot accommodate the message, enable interrupts and return.
     if (mbox_ptr->num_slots != 0 && msg_size > mbox_ptr->max_slot_size) {
@@ -323,14 +339,14 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
     slot_ptr added_slot = init_slot(slot, mbox_id, msg_ptr, msg_size);
     add_slot_list(added_slot, mbox_ptr);
 
-   
+
     if (is_zapped())
       {
          EnableInterrupts();
          return -3;
       }
-    
-    EnableInterrupts();      
+
+    EnableInterrupts();
     return 0;
 }
  /* MboxSend */
@@ -356,11 +372,11 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
 
     // Update the process table for the current process.
     int pid = getpid();
-    mbox_proc_ptr *procPtr = &ProcTable[pid % MAXPROC];
+    mbox_proc_ptr procPtr = &ProcTable[pid % MAXPROC];
     procPtr->pid = pid;
     procPtr->status = ACTIVE;
     procPtr->message = msg_ptr;
@@ -408,12 +424,12 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size) {
             // Assuming you have mechanisms to initiate sending processes here.
             // Since process_send_queue() is not to be used, implement the sending logic here.
 
-            slot_ptr new_slot = init_slot(NextFreeSlot(), mbox_ptr->mbox_id, 
+            slot_ptr new_slot = init_slot(NextFreeSlot(), mbox_ptr->mbox_id,
                                           mbox_ptr->block_sendlist->message,
                                           mbox_ptr->block_sendlist->msg_size);
             if (new_slot != NULL) { // Check if the slot was successfully initialized.
                 add_slot_list(new_slot, mbox_ptr);
-                
+
                 int pidToSend = mbox_ptr->block_sendlist->pid;
                 mbox_proc_ptr nextInLine = mbox_ptr->block_sendlist->next_block_send;
 
@@ -455,7 +471,7 @@ int MboxRelease(int mbox_id) {
         return -1;
     }
 
-    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
 
     // Set mailbox status to UNUSED to prevent new operations on it.
     mbox_ptr->status = UNUSED;
@@ -480,14 +496,14 @@ int MboxRelease(int mbox_id) {
 
     // Clear out the mailbox to reset its state fully.
     ResetMailbox(mbox_id);
-   
+
 
     // Return the zapped status to indicate if the current process was interrupted.
     if (is_zapped())
       {
          EnableInterrupts();
          return -3;
-      } 
+      }
 
     EnableInterrupts();
     return 0;
@@ -495,7 +511,7 @@ int MboxRelease(int mbox_id) {
  /* MboxRelease */
 
 
- 
+
 /* ------------------------------------------------------------------------
    Name - MboxCondReceive
    Purpose - Non-blockingly receives a message from a specified MBOX slot.
@@ -513,7 +529,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate the message size against the maximum slot size for this mailbox.
     if (msg_size > mbox_ptr->max_slot_size) {
@@ -572,7 +588,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
          EnableInterrupts();
          return -3;
       }
-      
+
     EnableInterrupts();
     return 0; // Message successfully queued in a slot.
 }
@@ -595,7 +611,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         return -1;
     }
 
-    mboxPtr *mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
 
     // Validate message size.
     if (max_msg_size < 0) {
@@ -653,17 +669,23 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
          EnableInterrupts();
          return -3;
       }
-      
+
     EnableInterrupts();
     return receivedMsgSize; // Return the size of the received message instead of is_zapped().
 }
 /* MboxCondReceive */
 
 
-int check_io(){
 
-   return 0;
-
+int check_io()
+{
+  //return 1 if one process is blocked on an I/O mailbox ( including the mailbox associated with the clock unit)
+  if(BLOCKED_IO_PROCESS_MAILBOX > 0)
+  {
+    return 1;
+  } else {
+    return 0;
+  }
 } /* check_io */
 
 
@@ -766,7 +788,12 @@ int Check_mode(void)
    Side Effects - Sends a message through MboxCondSend for every 5th call (100 ms)
                   and calls time_slice to potentially switch processes.
    -------------------------------------------------------------------------------- */
-void ClockInterruptHandler(int dev, void *punit) {
+int clock_interrupts = 0;
+void ClockInterruptHandler(int dev, void *punit)
+{
+    DisableInterrupts();
+    Check_kernel_mode("ClockInterruptHandler");
+
     // Cast void pointer to integer to represent the unit number.
     int unit = (int)punit;
 
@@ -788,18 +815,34 @@ void ClockInterruptHandler(int dev, void *punit) {
 
     // Static counter to keep track of clock ticks handled.
     static int tickCount = 0;
- 
+
     // Increment the tick count by the defined milliseconds per tick.
     tickCount += CLOCK_MS;
 
+    int status = 0;
+    clock_interrupts++;
+
+    if(clock_interrupts == 5)
+    {
+        device_input(dev, unit, &status);
+        //device_input(CLOCK_DEV, unit, &status);
+        console("ClockInterruptHandler(): MboxCondSend -> Sending a message!\n", unit);
+        MboxCondSend(IOMAILBOX[CLOCKIOMAILBOX], &status, sizeof(int));
+        clock_interrupts = 0;
+    }
+
     // Perform an action every 100 ms, assuming 20 ms per tick.
     if (tickCount % 100 == 0) {
+      //MboxCondSend(IOMAILBOX[CLOCKIOMAILBOX], &status, sizeof(int));
         // Conditionally send a message if it's time.
-        MboxCondSend(unit, &dummyMsg, sizeof(dummyMsg));
+        //MboxCondSend(unit, &status, sizeof(int));
+        //MboxCondSend(IOMAILBOX[CLOCKIOMAILBOX], &status, sizeof(int));
     }
 
     // Call time_slice to potentially switch processes according to scheduling.
     time_slice();
+
+    EnableInterrupts();
 }
 
 /* ClockInterruptHandler */
@@ -820,17 +863,24 @@ void ClockInterruptHandler(int dev, void *punit) {
                   state based on the disk operation's outcome.
    -------------------------------------------------------------------------------- */
 void DiskInterruptHandler(int dev, void *punit) {
+  DisableInterrupts();
+  Check_kernel_mode("DiskInterruptHandler");
+
     // Ensure the handler is responding to disk device interrupts.
     if (dev != DISK_DEV) {
         console("DiskInterruptHandler(): Incorrect device. Expected DISK_DEV.\n");
-        return -1;
+        //halt(1);
+        //return -1;
+        return;
     }
 
     int unit = (int)punit;
     // Validate the disk unit number.
     if (unit < 0 || unit >= DISK_UNITS) {
         console("DiskInterruptHandler(): Unit %d out of range.\n", unit);
-        return -1;
+        //halt(1);
+        //return -1;
+        return;
     }
 
     // Retrieve the status from the disk device.
@@ -839,8 +889,9 @@ void DiskInterruptHandler(int dev, void *punit) {
 
     // Attempt to send the disk status to the mailbox associated with this unit.
     // This is a non-blocking attempt to communicate device status.
-    int sendResult = MboxCondSend(unit, &status, sizeof(status));
+    int sendResult = MboxCondSend(IOMAILBOX[DISKIOMAILBOX+unit], &status, sizeof(status));
     // Optionally handle or log sendResult to monitor mailbox communication status.
+    EnableInterrupts();
 }
  /* DiskInterruptHandler */
 
@@ -854,6 +905,9 @@ void DiskInterruptHandler(int dev, void *punit) {
    -------------------------------------------------------------------------------- */
 
 void TerminalInterruptHandler(int dev, void *punit) {
+  DisableInterrupts();
+  Check_kernel_mode("TerminalInterruptHandler");
+
     int status;
     int unit = (int)punit;
 
@@ -877,9 +931,10 @@ void TerminalInterruptHandler(int dev, void *punit) {
     device_input(TERM_DEV, unit, &status);
 
     // Attempt to send the status to the mailbox associated with this terminal unit.
-    int result = MboxCondSend(unit, &status, sizeof(status));
+    int result = MboxCondSend(IOMAILBOX[TERMIOMAILBOX+unit], &status, sizeof(status));
 
-    // Note: The function currently does not utilize 'result'. 
+    // Note: The function currently does not utilize 'result'.
+    EnableInterrupts();
 }
 /* TerminalInterruptHandler */
 
@@ -894,6 +949,9 @@ void TerminalInterruptHandler(int dev, void *punit) {
                   ranging from process creation, termination, to message passing and I/O operations.
    -------------------------------------------------------------------------------- */
 void SyscallInterruptHandler(int dev, void *unit) {
+  DisableInterrupts();
+  Check_kernel_mode("SyscallInterruptHandler");
+
     sysargs *sys_ptr = (sysargs *) unit; // Cast to sysargs pointer for system call arguments.
 
     // Ensure this handler is invoked for the correct device type (SYSCALL_INT).
@@ -910,6 +968,7 @@ void SyscallInterruptHandler(int dev, void *unit) {
 
     // Dispatch to the appropriate system call handler based on syscall number.
     sys_vec[sys_ptr->number](sys_ptr);
+    EnableInterrupts();
 }
  /* SyscallInterruptHandler */
 
@@ -936,35 +995,53 @@ void HandleInvalidSyscall(sysargs *args) {
    Side Effects - Blocks the calling process until the specified device operation completes.
                   The process may also be terminated if it is zapped while waiting.
    -------------------------------------------------------------------------------- */
-int WaitForDevice(int type, int unit, int *status) {
+int waitdevice(int type, int unit, int *status) {
+    DisableInterrupts();
+    Check_kernel_mode("waitdevice");
+
     int result = 0;
 
     // Validate the device type.
-    if ((type != DISK_DEV) && (type != CLOCK_DEV) && (type != TERM_DEV)) {
+    if ((type != DISK_DEV) || (type != CLOCK_DEV) || (type != TERM_DEV)) {
         if (DEBUG2 && debugflag2) {
-            console("WaitForDevice(): incorrect device type. Halting..\n");
+            console("WaitForDevice(): incorrect device type. Should probably halt but maybe not\n");
+            //halt(1);
         }
-        halt(1);
     }
-    
+
     // Use a mailbox to wait for the device operation to complete.
+    BLOCKED_IO_PROCESS_MAILBOX++;
     switch (type) {
+      case CLOCK_DEV:
+        result = MboxReceive(IOMAILBOX[CLOCKIOMAILBOX], status, sizeof(int));
+        break;
         case DISK_DEV:
-        case CLOCK_DEV:
+          result = MboxReceive(IOMAILBOX[DISKIOMAILBOX+unit], status, sizeof(int));
+          break;
         case TERM_DEV:
-            result = MboxReceive(unit, status, sizeof(int));
-            break;
+          result = MboxReceive(IOMAILBOX[TERMIOMAILBOX+unit], status, sizeof(int));
+          break;
         default:
-            printf("WaitForDevice(): unexpected device type (%d). Halting...\n", type);
+            console("WaitForDevice(): unexpected device type (%d). Halting...\n", type);
             halt(1); // Halt on invalid device type.
-    } 
+    }
+    BLOCKED_IO_PROCESS_MAILBOX--;
+
+    //result = MboxReceive(IOMAILBOX[unit], status, sizeof(int));
+    EnableInterrupts(); // re-enable interrupts
 
     //check if zapped
-    if(result == -3) 
+    if(result == -3)
     {
         return -1;
     }
-   
+
+    if (is_zapped())
+    {
+        return -1;
+    }
+
+
     // Check if the process was zapped while waiting.
     //return (result == -3) ? -1 : 0;
    return 0;
@@ -1026,13 +1103,13 @@ void ResetProcessMailSlot(int pid) {
 /*ResetProcessMailSlot*/
 /* --------------------------------------------------------------------------------
    Name - NextFreeSlot
-   Purpose - Finds and returns the index of the next available (unused) slot in the 
+   Purpose - Finds and returns the index of the next available (unused) slot in the
              MailBoxSlots array to be utilized for message passing.
    Parameters - None.
-   Returns - The index of the first available slot if one exists, or -2 to indicate 
+   Returns - The index of the first available slot if one exists, or -2 to indicate
              that no slots are currently available.
-   Side Effects - None directly from this function, but the returned slot index is 
-                  typically used immediately after for message storage, affecting the 
+   Side Effects - None directly from this function, but the returned slot index is
+                  typically used immediately after for message storage, affecting the
                   status of that slot in the MailBoxSlots array.
    -------------------------------------------------------------------------------- */
 int NextFreeSlot() {
@@ -1056,7 +1133,7 @@ int NextFreeSlot() {
                 msg_ptr: Pointer to the message data to copy into the slot.
                 msg_size: Size of the message data to copy.
    Returns - Pointer to the initialized slot (slot_ptr).
-   Side Effects - Updates a slot in the MailBoxSlots array with message details and 
+   Side Effects - Updates a slot in the MailBoxSlots array with message details and
                   changes its status to USED, which can affect mailbox operations.
    -------------------------------------------------------------------------------- */
 slot_ptr init_slot(int slot_index, int mbox_id, void *msg_ptr, int msg_size) {
@@ -1102,6 +1179,4 @@ int add_slot_list(slot_ptr added_slot, mboxPtr mbox_ptr) {
 
     // Increment and return the count of slots used in this mailbox.
     return ++mbox_ptr->mbox_slots_used;
-}
-/*add_slot_list*/
-
+} /*add_slot_list*/
