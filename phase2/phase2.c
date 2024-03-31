@@ -250,66 +250,55 @@ int MboxCreate(int slots, int slot_size) {
    Side Effects - none.
    ----------------------------------------------------------------------- */
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
-    // Check kernel mode and disable interrupts for operation safety.
     Check_kernel_mode("MboxSend");
     DisableInterrupts();
 
-    // Validate message size.
     if (msg_size < 0 || msg_size > MAX_MESSAGE) {
-        console("Message is to large.\n");
+        console("Message is too large.\n");
+        EnableInterrupts();
         return -1;
     }
 
-    // Validate mailbox ID range.
     if (mbox_id < 1 || mbox_id > MAXMBOX) {
         console("The message box ID is not valid.\n");
+        EnableInterrupts();
         return -1;
     }
 
-    // Get a pointer to the mailbox.
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+    mboxPtr mbox_ptr = &MailBoxTable[mbox_id - 1]; // Adjusted for zero-based array indexing
 
-    // If the mailbox cannot accommodate the message, enable interrupts and return.
     if (mbox_ptr->num_slots != 0 && msg_size > mbox_ptr->max_slot_size) {
         EnableInterrupts();
         return -1;
     }
 
-    // Update process table with message details.
     int pid = getpid();
-    ProcTable[pid % MAXPROC].pid = pid;
-    ProcTable[pid % MAXPROC].status = ACTIVE;
-    ProcTable[pid % MAXPROC].message = msg_ptr;
-    ProcTable[pid % MAXPROC].msg_size = msg_size;
+    mbox_proc_ptr procPtr = &ProcTable[pid % MAXPROC];
+    procPtr->pid = pid;
+    procPtr->status = ACTIVE;
+    procPtr->message = msg_ptr;
+    procPtr->msg_size = msg_size;
 
-    // If no slots available or receiving process is not waiting, block the sending process.
     if (mbox_ptr->num_slots <= mbox_ptr->mbox_slots_used && mbox_ptr->block_recvlist == NULL) {
         mbox_proc_ptr* lastPtr = &(mbox_ptr->block_sendlist);
         while (*lastPtr != NULL) {
             lastPtr = &((*lastPtr)->next_block_send);
         }
-        *lastPtr = &ProcTable[pid % MAXPROC];
+        *lastPtr = procPtr;
 
         block_me(SEND_BLOCK);
-        if (ProcTable[pid % MAXPROC].mbox_release) {
+
+        if (procPtr->mbox_release || is_zapped()) {
             EnableInterrupts();
             return -3;
         }
-
-      if (is_zapped())
-      {
-         EnableInterrupts();
-         return -3;
-      }
     }
 
-    // Check for a process waiting to receive; if so, transfer the message directly.
     if (mbox_ptr->block_recvlist != NULL) {
         if (msg_size > mbox_ptr->block_recvlist->msg_size) {
             mbox_ptr->block_recvlist->status = FAILED;
-            int pidToUnblock = mbox_ptr->block_recvlist->pid;
-            mbox_ptr->block_recvlist = mbox_ptr->block_recvlist->next_ptr;
-            unblock_proc(pidToUnblock);
+            unblock_proc(mbox_ptr->block_recvlist->pid);
+            mbox_ptr->block_recvlist = mbox_ptr->block_recvlist->next_block_recv;
             EnableInterrupts();
             return -1;
         }
@@ -317,34 +306,24 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size) {
         memcpy(mbox_ptr->block_recvlist->message, msg_ptr, msg_size);
         mbox_ptr->block_recvlist->msg_size = msg_size;
 
-        int recvPid = mbox_ptr->block_recvlist->next_ptr;
-        unblock_proc(recvPid);
+        int pidToUnblock = mbox_ptr->block_recvlist->pid;
+        mbox_ptr->block_recvlist = mbox_ptr->block_recvlist->next_block_recv;
+        unblock_proc(pidToUnblock);
+    } else {
+        int slot = NextFreeSlot();
+        if (slot == -2) {
+            console("MboxSend(): No slots in system. Halting...\n");
+            halt(1);
+        }
+
+        slot_ptr added_slot = init_slot(slot, mbox_id - 1, msg_ptr, msg_size); // Adjusted for zero-based array indexing
+        add_slot_list(added_slot, mbox_ptr);
+    }
+
+    if (is_zapped()) {
         EnableInterrupts();
-
-         if (is_zapped())
-         {
-            EnableInterrupts();
-            return -3;
-         }
+        return -3;
     }
-
-    // Check for mail slot table overflows.
-    int slot = NextFreeSlot();
-    if (slot == -2) {
-        console("MboxSend(): No slots in system. Halting...\n");
-        halt(1);
-    }
-
-    // Initialize and add the slot to the mailbox's slot list.
-    slot_ptr added_slot = init_slot(slot, mbox_id, msg_ptr, msg_size);
-    add_slot_list(added_slot, mbox_ptr);
-
-
-    if (is_zapped())
-      {
-         EnableInterrupts();
-         return -3;
-      }
 
     EnableInterrupts();
     return 0;
@@ -372,7 +351,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+     mboxPtr mbox_ptr = &MailBoxTable[mbox_id - 1];
 
     // Update the process table for the current process.
     int pid = getpid();
@@ -471,7 +450,7 @@ int MboxRelease(int mbox_id) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+     mboxPtr mbox_ptr = &MailBoxTable[mbox_id - 1];
 
     // Set mailbox status to UNUSED to prevent new operations on it.
     mbox_ptr->status = UNUSED;
@@ -529,7 +508,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+     mboxPtr mbox_ptr = &MailBoxTable[mbox_id - 1];
 
     // Validate the message size against the maximum slot size for this mailbox.
     if (msg_size > mbox_ptr->max_slot_size) {
@@ -611,7 +590,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int max_msg_size) {
         return -1;
     }
 
-    mboxPtr mbox_ptr = &MailBoxTable[mbox_id];
+     mboxPtr mbox_ptr = &MailBoxTable[mbox_id - 1];
 
     // Validate message size.
     if (max_msg_size < 0) {
