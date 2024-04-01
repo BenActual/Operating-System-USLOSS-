@@ -103,9 +103,18 @@ void getTimeOfDay(systemArgs *args)
 	ActivateUserMode();
 }
 
+int readCurrentStartTime()
+{
+	u//nsigned int current_time = sys_clock(); // Get current system time
+	//unsigned int time_since_start = current_time - Current->startTime;
+	//return USLOSS_Clock() - Current->startTime;
+	//return time_since_start;
+	return Current->startTime;
+}
+
 void cpuTime(systemArgs *args)
 {
-	args->arg1 = USLOSS_Clock() - readCurStartTime();
+	args->arg1 = USLOSS_Clock() - readCurrentStartTime();
 	ActivateUserMode();
 }
 
