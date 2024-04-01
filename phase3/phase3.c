@@ -40,6 +40,8 @@ typedef struct UserProcessTable *UserProcessTable_ptr;
 typedef struct UserProcessTable {
     UserProcessTable_ptr *next;
     UserProcessTable_ptr *prev;
+    UserProcessTable_ptr parent;
+    UserProcessTable_ptr childprocessptr;
     char name[MAX_MESSAGE];
     int status; //int PROCESS_STATE;
     int pid;
@@ -49,7 +51,6 @@ typedef struct UserProcessTable {
     int stackSize;
     void *entry_point;
     void *func_args;
-    //slot_ptr mbox;
     int semaphore;
     int mbox_id;
     int cpu_time;
