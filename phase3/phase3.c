@@ -49,8 +49,8 @@ typedef struct UserProcessTable {
     int child_pid;
     int process_priority;
     int stackSize;
-    void *entry_point;
-    void *func_args;
+    int (*startFunc)(char*); //void *entry_point;
+    char *args;
     int semaphore;
     int mbox_id;
     int cpu_time;
@@ -62,7 +62,6 @@ typedef struct SemaphoreStructure {
     int semaphore;
     int mbox_id;
 } SemaphoreStructure;
-
 
 //func definitions
 //extern int start2(char *);
@@ -78,7 +77,6 @@ int terminate_real(int exit_code);
 int wait_real(int *status);
 int getPID_real(int *pid);
 int cputime_real(int *pid);
-
 
 //globals arrays
 UserProcessTable pTable[MAXPROC];
@@ -99,40 +97,18 @@ void ActivateUserMode()
     USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_MODE);
 }
 
-/* ------------------------------------------------------------------------
-   Name - GetTimeOfDay
-   Purpose - returns the value of the USLOSS time-of-day clock
-   Parameters - a struct of arguments
-   Returns - nothing
-   Side Effects - none
-   ----------------------------------------------------------------------- */
 void getTimeOfDay(systemArgs *args)
 {
-	/* place time of day in args*[4] */
 	args->arg1 = USLOSS_Clock();
 	ActivateUserMode();
 }
 
-/* ------------------------------------------------------------------------
-   Name - CPUTime
-   Purpose - returns the cpu time of the current process
-   Parameters - a struct of arguments
-   Returns - nothing
-   Side Effects - none
-   ----------------------------------------------------------------------- */
 void cpuTime(systemArgs *args)
 {
 	args->arg1 = USLOSS_Clock() - readCurStartTime();
 	ActivateUserMode();
 }
 
-/* ------------------------------------------------------------------------
-   Name - getPID
-   Purpose - returns the PID of the current process
-   Parameters - a struct of arguments
-   Returns - nothing
-   Side Effects - none
-   ----------------------------------------------------------------------- */
 void getPID(systemArgs *args)
 {
 	args->arg1 = getpid();
@@ -183,14 +159,13 @@ int start2(char *arg)
       pTable[i].parent_pid = -1;
       pTable[i].child_pid = -1;
       pTable[i].process_priority = -1;
-      pTable[i].entry_point = NULL;
-      pTable[i].func_args = NULL;
+      pTable[i].startFunc = NULL;
+      pTable[i].args = NULL;
       //pTable[i].mbox = NULL;
       pTable[i].semaphore = INACTIVE;
       pTable[i].mbox_id = -1;
       pTable[i].cpu_time = -1;
 
-      //ProcessTable[i].MboxID = -1;
       //ProcessTable[i].startFunc = NULL;
       //ProcessTable[i].nextProcPtr = NULL;
     }
