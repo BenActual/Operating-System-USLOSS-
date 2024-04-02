@@ -302,19 +302,21 @@ int terminate_real(int exit_code)
    //check kernel mode
    check_kernel_mode("terminate_real");
 
-   //call quit()
+     // if the process has children, zap them
+    if (parent->childProcessPtr != NULL) {
+        while (parent->childProcessPtr != NULL) {
+            zap(parent->childProcessPtr->pid);
+        }
+    }
 }
 
 static void terminate(systemArgs *args)
 {
   UserProcessTable parent =  &pTable[getpid() % MAXPROC]; // the calling process
 
-  // if the process has children, zap them
-    if (parent->childProcessPtr != NULL) {
-        while (parent->childProcessPtr != NULL) {
-            zap(parent->childProcessPtr->pid);
-        }
-    }
+
+
+ ActivateUserMode();
 }
 
 static void semCreate(systemArgs *args)
