@@ -334,16 +334,24 @@ static void terminate(systemArgs *args)
 
 static void semCreate(systemArgs *args)
 {
+	//check kernel mode
+  	check_kernel_mode("semCreate");
 }
 
 static void semP(systemArgs *args)
 {
+	//check kernel mode
+  	check_kernel_mode("semP");
 }
 
 static void semV(systemArgs *args)
 {
+	//check kernel mode
+  	check_kernel_mode("semV");
 }
 
 static void semFree(systemArgs *args)
 {
+	//check kernel mode
+  	check_kernel_mode("semFree");
 }
