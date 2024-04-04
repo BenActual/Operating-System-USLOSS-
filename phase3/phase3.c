@@ -207,6 +207,8 @@ int start2(char *arg)
 void wait(systemArgs *args)
 {
   int kid_pid;
+  int status = (int)args->arg2;
+
   kid_pid = wait_real(&status);
 
   pTable[getpid() % MAXPROC].status = ACTIVE;
@@ -302,21 +304,25 @@ int terminate_real(int exit_code)
    //check kernel mode
    check_kernel_mode("terminate_real");
 
-     // if the process has children, zap them
-    if (parent->childProcessPtr != NULL) {
-        while (parent->childProcessPtr != NULL) {
-            zap(parent->childProcessPtr->pid);
+    // if the process has children, zap them
+    if (parent->childprocessptr != NULL) {
+        while (parent->childprocessptr != NULL) {
+            zap(parent->childprocessptr->pid);
         }
     }
+    quit(exit_code);
 }
 
 static void terminate(systemArgs *args)
 {
-  UserProcessTable parent =  &pTable[getpid() % MAXPROC]; // the calling process
+  //check kernel mode
+  check_kernel_mode("terminate");
+  //UserProcessTable parent =  &pTable[getpid() % MAXPROC];
 
+  int exit_code = (int)args_ptr->arg1;
+  terminate_real(exit_code);
 
-
- ActivateUserMode();
+  ActivateUserMode();
 }
 
 static void semCreate(systemArgs *args)
