@@ -177,7 +177,8 @@ int start2(char *arg)
 
     // initialize semaphore table
     for (int i = 0; i < MAXSEMS; i++) {
-        pSemtable[i].status = 0; //EMPTY;
+        pSemtable[i].status = INACTIVE; //EMPTY;
+	pSemtable[i].pBlocked = NULL;
     }
 
     //activate system call handlers
