@@ -75,8 +75,12 @@ void check_kernel_mode(char *str);
 int spawn_real(char *name, int (*func)(char*), char *arg, int stack_size, int priority);
 int terminate_real(int exit_code);
 int wait_real(int *status);
-int getPID_real(int *pid);
-int cputime_real(int *pid);
+int getPID(int *pid);
+int cputime(int *pid);
+void ActivateUserMode();
+static void spawn(sysargs *args);
+static void wait(sysargs *args);
+static void terminate(sysargs *args);
 
 //globals arrays
 UserProcessTable pTable[MAXPROC];
@@ -89,15 +93,7 @@ static void nullsys3(sysargs *args_ptr) {
    terminate_real(1);
 } /* nullsys3 */
 
-void ActivateUserMode()
-{
-    if(debugFlag){
-        USLOSS_Console("ActivateUserMode(): Changing to user mode\n");
-    }
-    USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_MODE);
-}
-
-void getTimeOfDay(systemArgs *args)
+static void gettimeofday(systemArgs *args)
 {
 	args->arg1 = USLOSS_Clock();
 	ActivateUserMode();
@@ -105,20 +101,20 @@ void getTimeOfDay(systemArgs *args)
 
 int readCurrentStartTime()
 {
-	u//nsigned int current_time = sys_clock(); // Get current system time
+	//unsigned int current_time = sys_clock(); // Get current system time
 	//unsigned int time_since_start = current_time - Current->startTime;
 	//return USLOSS_Clock() - Current->startTime;
 	//return time_since_start;
 	return Current->startTime;
 }
 
-void cpuTime(systemArgs *args)
+static void cputime(systemArgs *args)
 {
 	args->arg1 = USLOSS_Clock() - readCurrentStartTime();
 	ActivateUserMode();
 }
 
-void getPID(systemArgs *args)
+static void getPID(systemArgs *args)
 {
 	args->arg1 = getpid();
 	ActivateUserMode();
@@ -243,12 +239,23 @@ void check_kernel_mode(char *str) {
    }
 }
 
-void setUsermode()
+void ActivateUserMode()
 {
-  /* set the user mode */
+    if(debugFlag){
+        USLOSS_Console("ActivateUserMode(): Changing to user mode\n");
+    }
+   /* set the user mode */
     psr = psr_get();
     psr &= ~PSR_CURRENT_MODE;
     psr_set(psr);
+}
+
+void Dev_ActivateUserMode()
+{
+    if(debugFlag){
+        USLOSS_Console("ActivateUserMode(): Changing to user mode\n");
+    }
+    USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_MODE);
 }
 
 void spawn(systemArgs *args)
@@ -338,17 +345,5 @@ static void semV(systemArgs *args)
 }
 
 static void semFree(systemArgs *args)
-{
-}
-
-static void gettimeofday(systemArgs *args)
-{
-}
-
-static void cputime(systemArgs *args)
-{
-}
-
-static void getPID(systemArgs *args)
 {
 }
