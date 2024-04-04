@@ -312,6 +312,8 @@ int terminate_real(int exit_code)
    //check kernel mode
    check_kernel_mode("terminate_real");
 
+   UserProcessTable parent =  &pTable[getpid() % MAXPROC];
+	
     // if the process has children, zap them
     if (parent->childprocessptr != NULL) {
         while (parent->childprocessptr != NULL) {
@@ -325,7 +327,6 @@ static void terminate(systemArgs *args)
 {
   //check kernel mode
   check_kernel_mode("terminate");
-  //UserProcessTable parent =  &pTable[getpid() % MAXPROC];
 
   int exit_code = (int)args_ptr->arg1;
   terminate_real(exit_code);
