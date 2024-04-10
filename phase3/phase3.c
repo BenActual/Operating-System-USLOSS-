@@ -93,7 +93,7 @@ static void nullsys3(sysargs *args_ptr) {
    terminate_real(1);
 } /* nullsys3 */
 
-static void gettimeofday(systemArgs *args)
+static void gettimeofday(sysargs *args)
 {
 	args->arg1 = USLOSS_Clock();
 	ActivateUserMode();
@@ -108,13 +108,13 @@ int readCurrentStartTime()
 	return Current->startTime;
 }
 
-static void cputime(systemArgs *args)
+static void cputime(sysargs *args)
 {
 	args->arg1 = USLOSS_Clock() - readCurrentStartTime();
 	ActivateUserMode();
 }
 
-static void getPID(systemArgs *args)
+static void getPID(sysargs *args)
 {
 	args->arg1 = getpid();
 	ActivateUserMode();
@@ -123,16 +123,16 @@ static void getPID(systemArgs *args)
 static void terminate(sysargs *args_ptr)
 {
 	int exit_code;
-	exit_code = (int)args_ptr->arg1;
+	exit_code = (int)args->arg1;
 	terminate_real(exit_code);
 }
 
-static void terminate(systemArgs *args)
+static void terminate(sysargs *args)
 {
   //check kernel mode
   check_kernel_mode("terminate");
 
-  int exit_code = (int)args_ptr->arg1;
+  int exit_code = (int)args->arg1;
   terminate_real(exit_code);
 
   ActivateUserMode();
