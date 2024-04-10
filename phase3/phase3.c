@@ -127,6 +127,17 @@ static void terminate(sysargs *args_ptr)
 	terminate_real(exit_code);
 }
 
+static void terminate(systemArgs *args)
+{
+  //check kernel mode
+  check_kernel_mode("terminate");
+
+  int exit_code = (int)args_ptr->arg1;
+  terminate_real(exit_code);
+
+  ActivateUserMode();
+}
+
 int start2(char *arg)
 {
     int		pid;
@@ -322,17 +333,6 @@ int terminate_real(int exit_code)
         }
     }
     quit(exit_code);
-}
-
-static void terminate(systemArgs *args)
-{
-  //check kernel mode
-  check_kernel_mode("terminate");
-
-  int exit_code = (int)args_ptr->arg1;
-  terminate_real(exit_code);
-
-  ActivateUserMode();
 }
 
 static void semCreate(systemArgs *args)
