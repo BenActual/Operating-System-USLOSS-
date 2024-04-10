@@ -179,6 +179,7 @@ int start2(char *arg)
     for (int i = 0; i < MAXSEMS; i++) {
         pSemtable[i].status = INACTIVE; //EMPTY;
 	pSemtable[i].pBlocked = NULL;
+    	pSemtable[i].semaphore = -1;
     }
 
     //activate system call handlers
