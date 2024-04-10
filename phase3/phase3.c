@@ -271,7 +271,7 @@ void Dev_ActivateUserMode()
     USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_MODE);
 }
 
-void spawn(systemArgs *args)
+void spawn(sysargs *args)
 {
     int pid;
     pid = spawn_real((char *)args->arg5, args->arg1, args->arg2,args->arg3, args->arg4);
@@ -335,25 +335,25 @@ int terminate_real(int exit_code)
     quit(exit_code);
 }
 
-static void semCreate(systemArgs *args)
+static void semCreate(sysargs *args)
 {
 	//check kernel mode
   	check_kernel_mode("semCreate");
 }
 
-static void semP(systemArgs *args)
+static void semP(sysargs *args)
 {
 	//check kernel mode
   	check_kernel_mode("semP");
 }
 
-static void semV(systemArgs *args)
+static void semV(sysargs *args)
 {
 	//check kernel mode
   	check_kernel_mode("semV");
 }
 
-static void semFree(systemArgs *args)
+static void semFree(sysargs *args)
 {
 	//check kernel mode
   	check_kernel_mode("semFree");
