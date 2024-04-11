@@ -34,39 +34,6 @@
 #include <usyscall.h>
 #include "sems.h"
 
-typedef struct UserProcessTable UserProcessTable;
-typedef struct UserProcessTable *UserProcessTable_ptr;
-
-typedef struct SemaphoreStructure SemaphoreStructure;
-typedef struct SemaphoreStructure *SemaphoreStructure_ptr;
-
-
-typedef struct UserProcessTable {
-    UserProcessTable_ptr *next;
-    UserProcessTable_ptr *prev;
-    UserProcessTable_ptr parent;
-    UserProcessTable_ptr childprocessptr;
-    char name[MAX_MESSAGE];
-    int status; //int PROCESS_STATE;
-    int pid;
-    int parent_pid;
-    int child_pid;
-    int process_priority;
-    int stackSize;
-    int (*startFunc)(char*); //void *entry_point;
-    char *args;
-    int semaphore;
-    int mbox_id;
-    int cpu_time;
-} UserProcessTable;
-
-typedef struct SemaphoreStructure {
-    UserProcessTable_ptr pBlocked;
-    int status;
-    int semaphore;
-    int mbox_id;
-} SemaphoreStructure;
-
 //func definitions
 //extern int start2(char *);
 int start2 (char *);
