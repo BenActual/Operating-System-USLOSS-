@@ -295,7 +295,7 @@ int terminate_real(int exit_code)
    //check kernel mode
    check_kernel_mode("terminate_real");
 
-   UserProcessTable parent =  &pTable[getpid() % MAXPROC];
+   UserProcessTable_ptr parent =  &pTable[getpid() % MAXPROC];
 	
     // if the process has children, zap them
     if (parent->childprocessptr != NULL) {
@@ -335,17 +335,17 @@ static void semCreate_real(int *sem_id);
 static void semP_real(int *sem_id)
 {
   	//check_kernel_mode("semP");
-	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+	SemaphoreStructure_ptr sem_p = &pSemTable[sem_id];
 }
 
 static void semV_real(int *sem_id)
 {
   	//check_kernel_mode("semV");
-	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+	SemaphoreStructure_ptr sem_v = &pSemTable[sem_id];
 }
 
 static void semFree_real(int *sem_id)
 {
   	//check_kernel_mode("semFree");
-	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+	SemaphoreStructure_ptr sem_free = &pSemTable[sem_id];
 }
