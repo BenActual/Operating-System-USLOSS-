@@ -7,63 +7,37 @@
 #define INACTIVE 0
 #define ACTIVE 1
 
-// Statuses
-#define ACTIVE 2
-#define FAILED 3
+typedef struct UserProcessTable UserProcessTable;
+typedef struct UserProcessTable *UserProcessTable_ptr;
 
-// Block types
-#define SEND_BLOCK 101
-#define RECV_BLOCK 102
+typedef struct SemaphoreStructure SemaphoreStructure;
+typedef struct SemaphoreStructure *SemaphoreStructure_ptr;
 
-// Table types
-#define MAILBOX_TABLE 1
-#define SLOT_TABLE    2
-#define PROC_TABLE    3
+typedef struct UserProcessTable {
+    UserProcessTable_ptr *next;
+    UserProcessTable_ptr *prev;
+    UserProcessTable_ptr parent;
+    UserProcessTable_ptr childprocessptr;
+    char name[MAX_MESSAGE];
+    int status; //int PROCESS_STATE;
+    int pid;
+    int parent_pid;
+    int child_pid;
+    int process_priority;
+    int stackSize;
+    int (*startFunc)(char*); //void *entry_point;
+    char *args;
+    int semaphore;
+    int mbox_id;
+    int cpu_time;
+} UserProcessTable;
 
-// Type definitions for easier usage
-typedef struct mailbox mail_box;
-typedef struct mailbox *mboxPtr;
-
-typedef struct mail_slot mail_slot;
-typedef struct mail_slot *slot_ptr;
-
-typedef struct mbox_proc mbox_proc;
-typedef struct mbox_proc *mbox_proc_ptr;
-
-// Structure definitions
-struct mailbox {
-   int           mbox_id;
-   int           status;
-   int           num_slots;
-   int           max_slot_size;
-   int           mbox_slots_used;
-   slot_ptr      slots;
-   mbox_proc_ptr blocked_procs;
-   mbox_proc_ptr block_sendlist;
-   mbox_proc_ptr block_recvlist;
-};
-
-struct mail_slot {
-   int       mbox_id;
-   int       slot_id;
-   int       status;
-   char      message[MAX_MESSAGE];
-   int       msg_size;
-};
-
-struct mbox_proc {
-   int           pid;
-   int           status;
-   void         *message;
-   int           msg_size;
-   int           mbox_release;
-   mbox_proc_ptr next_block_send;
-   mbox_proc_ptr next_block_recv;
-   mbox_proc_ptr next_ptr;
-   slot_ptr     mail_slot;
-   mbox_proc_ptr next_slot;
-   mbox_proc_ptr prev_slot;
-};
+typedef struct SemaphoreStructure {
+    UserProcessTable_ptr pBlocked;
+    int status;
+    int semaphore;
+    int mbox_id;
+} SemaphoreStructure;
 
 // PSR structure definitions
 struct psr_bits {
