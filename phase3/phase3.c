@@ -74,6 +74,8 @@ int readCurrentStartTime()
 {
 	//unsigned int current_time = sys_clock(); // Get current system time
 	//unsigned int time_since_start = current_time - Current->startTime;
+
+	//USLOSS_CLock() -> Return the time (in microseconds) since USLOSS started running
 	//return USLOSS_Clock() - Current->startTime;
 	//return time_since_start;
 	return Current->startTime;
@@ -81,6 +83,7 @@ int readCurrentStartTime()
 
 static void cputime(sysargs *args)
 {
+	//USLOSS_CLock() -> Return the time (in microseconds) since USLOSS started running
 	args->arg1 = USLOSS_Clock() - readCurrentStartTime();
 	ActivateUserMode();
 }
@@ -89,13 +92,6 @@ static void getPID(sysargs *args)
 {
 	args->arg1 = getpid();
 	ActivateUserMode();
-}
-
-static void terminate(sysargs *args_ptr)
-{
-	int exit_code;
-	exit_code = (int)args->arg1;
-	terminate_real(exit_code);
 }
 
 static void terminate(sysargs *args)
@@ -209,7 +205,7 @@ int wait_real(int *status)
   //check kernel mode
   check_kernel_mode("wait_real");
 
-  //pTable[getpid() % MAXPROC].status = WAIT_BLOCK;
+  //pTable[getpid() % MAXPROC].status = WAIT_PROCESS_BLOCKED;
   return join(status);
 }
 
