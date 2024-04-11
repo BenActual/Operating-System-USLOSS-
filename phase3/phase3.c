@@ -37,6 +37,10 @@
 typedef struct UserProcessTable UserProcessTable;
 typedef struct UserProcessTable *UserProcessTable_ptr;
 
+typedef struct SemaphoreStructure SemaphoreStructure;
+typedef struct SemaphoreStructure *SemaphoreStructure_ptr;
+
+
 typedef struct UserProcessTable {
     UserProcessTable_ptr *next;
     UserProcessTable_ptr *prev;
@@ -257,7 +261,7 @@ void ActivateUserMode()
     if(debugFlag){
         USLOSS_Console("ActivateUserMode(): Changing to user mode\n");
     }
-   /* set the user mode */
+    // set user mode
     psr = psr_get();
     psr &= ~PSR_CURRENT_MODE;
     psr_set(psr);
@@ -337,24 +341,44 @@ int terminate_real(int exit_code)
 
 static void semCreate(sysargs *args)
 {
-	//check kernel mode
-  	check_kernel_mode("semCreate");
+	semCreate_real();
 }
 
 static void semP(sysargs *args)
 {
-	//check kernel mode
-  	check_kernel_mode("semP");
+	semP_real();
 }
 
 static void semV(sysargs *args)
 {
-	//check kernel mode
-  	check_kernel_mode("semV");
+	semV_real();
 }
 
 static void semFree(sysargs *args)
 {
-	//check kernel mode
-  	check_kernel_mode("semFree");
+	semFree_real();
+}
+
+static void semCreate_real(int *sem_id);
+{
+  	//check_kernel_mode("semCreate");
+	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+}
+
+static void semP_real(int *sem_id)
+{
+  	//check_kernel_mode("semP");
+	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+}
+
+static void semV_real(int *sem_id)
+{
+  	//check_kernel_mode("semV");
+	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
+}
+
+static void semFree_real(int *sem_id)
+{
+  	//check_kernel_mode("semFree");
+	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
 }
