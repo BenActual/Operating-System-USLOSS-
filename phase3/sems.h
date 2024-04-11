@@ -7,17 +7,12 @@
 #define INACTIVE 0
 #define ACTIVE 1
 
-// Statuses
-#define ACTIVE 2
-#define FAILED 3
-
 // Type definitions for easier usage
 typedef struct UserProcessTable UserProcessTable;
 typedef struct UserProcessTable *UserProcessTable_ptr;
 
 typedef struct SemaphoreStructure SemaphoreStructure;
 typedef struct SemaphoreStructure *SemaphoreStructure_ptr;
-
 
 typedef struct UserProcessTable {
     UserProcessTable_ptr *next;
