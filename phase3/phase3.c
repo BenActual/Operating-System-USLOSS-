@@ -274,9 +274,9 @@ int spawn_real(char *name, int (*func)(char*), char *arg, int stack_size, int pr
   strcpy(pTable[proc_table_slot].name, name);
   pTable[process_slot].pid = pid;             // get child pid
   pTable[process_slot].parent_pid = getpid();  // get parent pid
-  pTable[process_slot].entrypoint = func;     // pass launch_usermode function to call
-  pTable[proc_table_slot].stack_size = stack_size;
-  pTable[proc_table_slot].priority = priority;
+  pTable[process_slot].entrypoint = func;     // pass usermode function to call
+  pTable[process_slot].stack_size = stack_size;
+  pTable[process_slot].priority = priority;
 
   MboxCondSend(pTable[process_slot].mbox_id, NULL, 0);
 
