@@ -302,46 +302,68 @@ int terminate_real(int exit_code)
     quit(exit_code);
 }
 
-static void semCreate(sysargs *args)
-{
-	semCreate_real();
-}
-
-static void semP(sysargs *args)
-{
-	semP_real();
-}
-
-static void semV(sysargs *args)
-{
-	semV_real();
-}
-
-static void semFree(sysargs *args)
-{
-	semFree_real();
-}
-
-static void semCreate_real(int *sem_id);
+int semcreate_real(int *sem_id);
 {
   	//check_kernel_mode("semCreate");
 	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
 }
 
-static void semP_real(int *sem_id)
+static void semp_real(int *sem_id)
 {
   	//check_kernel_mode("semP");
 	SemaphoreStructure_ptr sem_p = &pSemTable[sem_id];
 }
 
-static void semV_real(int *sem_id)
+static void semv_real(int *sem_id)
 {
   	//check_kernel_mode("semV");
 	SemaphoreStructure_ptr sem_v = &pSemTable[sem_id];
+
+
 }
 
-static void semFree_real(int *sem_id)
+static void semfree_real(int *sem_id)
 {
   	//check_kernel_mode("semFree");
 	SemaphoreStructure_ptr sem_free = &pSemTable[sem_id];
+}
+
+static void semcreate(sysargs *args)
+{
+	int sem_value = ((int)args->arg1);
+	int ret_value = semcreate_real(sem_value);
+	
+	//error check here
+
+	ActivateUserMode();
+}
+
+static void semp(sysargs *args)
+{
+	int sem_value = ((int)args->arg1);
+	semp_real();
+
+	//error check here
+
+	ActivateUserMode();
+}
+
+static void semv(sysargs *args)
+{
+	int sem_value = ((int)args->arg1);
+	semv_real();
+
+	//error check here
+
+	ActivateUserMode();
+}
+
+static void semfree(sysargs *args)
+{
+	int value = ((int)args->arg1);
+	semfree_real();
+
+	//error check here
+
+	ActivateUserMode();
 }
