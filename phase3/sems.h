@@ -6,6 +6,7 @@
 #define NULL 0
 #define INACTIVE 0
 #define ACTIVE 1
+#define WAITING_PROCESS_BLOCKED 3
 
 // Type definitions for easier usage
 typedef struct UserProcessTable UserProcessTable;
