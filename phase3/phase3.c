@@ -330,30 +330,36 @@ static void semfree_real(int *sem_id)
 
 static void semcreate(sysargs *args)
 {
-	int sem_value = ((int)args->arg1);
-	int ret_value = semcreate_real(sem_value);
+	int value = ((int)args->arg1);
+	int ret_value = semcreate_real(value);
 	
 	//error check here
+
+	args->arg4 = ret_value;
 
 	ActivateUserMode();
 }
 
 static void semp(sysargs *args)
 {
-	int sem_value = ((int)args->arg1);
-	semp_real();
+	int value = ((int)args->arg1);
+	int ret_value = semp_real(value);
 
 	//error check here
+
+	args->arg4 = ret_value;
 
 	ActivateUserMode();
 }
 
 static void semv(sysargs *args)
 {
-	int sem_value = ((int)args->arg1);
-	semv_real();
+	int value = ((int)args->arg1);
+	int ret_value = semv_real(value);
 
 	//error check here
+
+	args->arg4 = ret_value;
 
 	ActivateUserMode();
 }
@@ -361,9 +367,11 @@ static void semv(sysargs *args)
 static void semfree(sysargs *args)
 {
 	int value = ((int)args->arg1);
-	semfree_real();
+	int ret_value = semfree_real(value);
 
 	//error check here
+
+	args->arg4 = ret_value;
 
 	ActivateUserMode();
 }
