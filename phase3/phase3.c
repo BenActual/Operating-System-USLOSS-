@@ -304,27 +304,26 @@ int terminate_real(int exit_code)
 
 int semcreate_real(int *sem_id);
 {
-  	//check_kernel_mode("semCreate");
+  	//check_kernel_mode("semcreate_real");
 	SemaphoreStructure_ptr sem_create = &pSemTable[sem_id];
 }
 
 static void semp_real(int *sem_id)
 {
-  	//check_kernel_mode("semP");
+  	//check_kernel_mode("semp_real");
 	SemaphoreStructure_ptr sem_p = &pSemTable[sem_id];
 }
 
 static void semv_real(int *sem_id)
 {
-  	//check_kernel_mode("semV");
+  	//check_kernel_mode("semv_real");
 	SemaphoreStructure_ptr sem_v = &pSemTable[sem_id];
-
 
 }
 
 static void semfree_real(int *sem_id)
 {
-  	//check_kernel_mode("semFree");
+  	//check_kernel_mode("semfree_real");
 	SemaphoreStructure_ptr sem_free = &pSemTable[sem_id];
 }
 
