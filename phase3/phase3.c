@@ -134,23 +134,19 @@ int start2(char *arg)
     for (i = 0; i < MAXPROC; i++)
     {
       //pid % MAXPROC;
-      strcpy(pTable[i].name, ""); //char name[MAX_MESSAGE];
+      strcpy(pTable[i].name, "");
       pTable[i].next = NULL;
       pTable[i].prev = NULL;
-      pTable[i].status = INACTIVE;       //pTable[i].PROCESS_STATE = INACTIVE;
+      pTable[i].status = INACTIVE;
       pTable[i].pid = -1;
       pTable[i].parent_pid = -1;
       pTable[i].child_pid = -1;
       pTable[i].process_priority = -1;
       pTable[i].startFunc = NULL;
       pTable[i].args = NULL;
-      //pTable[i].mbox = NULL;
       pTable[i].semaphore = INACTIVE;
       pTable[i].mbox_id = -1;
-      pTable[i].cpu_time = -1;
-
-      //ProcessTable[i].startFunc = NULL;
-      //ProcessTable[i].nextProcPtr = NULL;
+      //pTable[i].cpu_time = -1;
     }
 
     // initialize semaphore table
@@ -158,6 +154,7 @@ int start2(char *arg)
         pSemtable[i].status = INACTIVE; //EMPTY;
 	pSemtable[i].pBlocked = NULL;
     	pSemtable[i].semaphore = -1;
+	pSemtable[i].mbox_id = -1;
     }
 
     //activate system call handlers
@@ -205,7 +202,7 @@ int wait_real(int *status)
   //check kernel mode
   check_kernel_mode("wait_real");
 
-  //pTable[getpid() % MAXPROC].status = WAIT_PROCESS_BLOCKED;
+  pTable[getpid() % MAXPROC].status = WAITING_PROCESS_BLOCKED;
   return join(status);
 }
 
