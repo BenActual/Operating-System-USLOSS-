@@ -261,14 +261,14 @@ int spawn_real(char *name, int (*func)(char*), char *arg, int stack_size, int pr
     halt(1);
   }
 
-  int proc_table_slot = pid % MAXPROC;
-  if(pTable[proc_table_slot].status = INACTIVE)
+  int process_slot = pid % MAXPROC;
+  if(pTable[process_slot].status = INACTIVE)
   {
-    pTable[proc_table_slot].status = ACTIVE;
+    pTable[process_slot].status = ACTIVE;
     mbox_id = MboxCreate(0,0);
-    pTable[proc_table_slot].mbox_id = mbox_id;
+    pTable[process_slot].mbox_id = mbox_id;
   } else {
-    mbox_id = pTable[proc_table_slot].mbox_id;
+    mbox_id = pTable[process_slot].mbox_id;
   }
 
   strcpy(pTable[proc_table_slot].name, name);
