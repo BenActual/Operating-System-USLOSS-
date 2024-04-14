@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "phase2.h": "c"
+        "phase2.h": "c",
+        "usyscall.h": "c",
+        "libuser.h": "c",
+        "main.h": "c",
+        "stdlib.h": "c",
+        "linkedlist.h": "c"
     }
 }

@@ -1,54 +1,25 @@
-// Macro definitions for general purposes
-#define DEBUG2 1
-#define USED 1
-#define UNUSED 0
 
-#define NULL 0
-#define INACTIVE 0
-#define ACTIVE 1
+#ifndef PHASE3_SEMS_H
+#define PHASE3_SEMS_H
 
-typedef struct UserProcessTable UserProcessTable;
-typedef struct UserProcessTable *UserProcessTable_ptr;
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "semtables.h"
+#include "linkedlist.h"
+#include "main.h"
 
-typedef struct SemaphoreStructure SemaphoreStructure;
-typedef struct SemaphoreStructure *SemaphoreStructure_ptr;
+#define SEM_READY 0
+#define SEM_USED  1
+#define LOCKED    1
+#define UNLOCKED  0
+#define FREEING   2
 
-typedef struct UserProcessTable {
-    UserProcessTable_ptr *next;
-    UserProcessTable_ptr *prev;
-    UserProcessTable_ptr parent;
-    UserProcessTable_ptr childprocessptr;
-    char name[MAX_MESSAGE];
-    int status; //int PROCESS_STATE;
-    int pid;
-    int parent_pid;
-    int child_pid;
-    int process_priority;
-    int stackSize;
-    int (*startFunc)(char*); //void *entry_point;
-    char *args;
-    int semaphore;
-    int mbox_id;
-    int cpu_time;
-} UserProcessTable;
+/** ------------------------ Typedefs and Structs ------------------------ **/
+typedef struct semaphore_struct semaphore_struct;
+typedef struct semaphore_struct * sem_struct_ptr;
+void SemaphoreInit(int index, short sid);
+void AddToSemTable(int sid, int newStatus, int newValue);
+int GetSemIndex(int sid);
 
-typedef struct SemaphoreStructure {
-    UserProcessTable_ptr pBlocked;
-    int status;
-    int semaphore;
-    int mbox_id;
-} SemaphoreStructure;
-
-// PSR structure definitions
-struct psr_bits {
-    unsigned int cur_mode:1;
-    unsigned int cur_int_enable:1;
-    unsigned int prev_mode:1;
-    unsigned int prev_int_enable:1;
-    unsigned int unused:28;
-};
-
-union psr_values {
-   struct psr_bits bits;
-   unsigned int integer_part;
-};
+#endif
