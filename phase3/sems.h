@@ -1,80 +1,24 @@
-// Macro definitions for general purposes
-#define DEBUG2 1
-#define USED 1
-#define UNUSED 0
+#ifndef PHASE3_SEMS_H
+#define PHASE3_SEMS_H
 
-#define NULL 0
-#define INACTIVE 0
-#define ACTIVE 1
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "semtables.h"
+#include "linkedlist.h"
+#include "main.h"
 
-// Statuses
-#define ACTIVE 2
-#define FAILED 3
+#define SEM_READY 0
+#define SEM_USED  1
+#define LOCKED    1
+#define UNLOCKED  0
+#define FREEING   2
 
-// Block types
-#define SEND_BLOCK 101
-#define RECV_BLOCK 102
+/** ------------------------ Typedefs and Structs ------------------------ **/
+typedef struct semaphore_struct semaphore_struct;
+typedef struct semaphore_struct * sem_struct_ptr;
+void SemaphoreInit(int index, short sid);
+void AddToSemTable(int sid, int newStatus, int newValue);
+int GetSemIndex(int sid);
 
-// Table types
-#define MAILBOX_TABLE 1
-#define SLOT_TABLE    2
-#define PROC_TABLE    3
-
-// Type definitions for easier usage
-typedef struct mailbox mail_box;
-typedef struct mailbox *mboxPtr;
-
-typedef struct mail_slot mail_slot;
-typedef struct mail_slot *slot_ptr;
-
-typedef struct mbox_proc mbox_proc;
-typedef struct mbox_proc *mbox_proc_ptr;
-
-// Structure definitions
-struct mailbox {
-   int           mbox_id;
-   int           status;
-   int           num_slots;
-   int           max_slot_size;
-   int           mbox_slots_used;
-   slot_ptr      slots;
-   mbox_proc_ptr blocked_procs;
-   mbox_proc_ptr block_sendlist;
-   mbox_proc_ptr block_recvlist;
-};
-
-struct mail_slot {
-   int       mbox_id;
-   int       slot_id;
-   int       status;
-   char      message[MAX_MESSAGE];
-   int       msg_size;
-};
-
-struct mbox_proc {
-   int           pid;
-   int           status;
-   void         *message;
-   int           msg_size;
-   int           mbox_release;
-   mbox_proc_ptr next_block_send;
-   mbox_proc_ptr next_block_recv;
-   mbox_proc_ptr next_ptr;
-   slot_ptr     mail_slot;
-   mbox_proc_ptr next_slot;
-   mbox_proc_ptr prev_slot;
-};
-
-// PSR structure definitions
-struct psr_bits {
-    unsigned int cur_mode:1;
-    unsigned int cur_int_enable:1;
-    unsigned int prev_mode:1;
-    unsigned int prev_int_enable:1;
-    unsigned int unused:28;
-};
-
-union psr_values {
-   struct psr_bits bits;
-   unsigned int integer_part;
-};
+#endif
