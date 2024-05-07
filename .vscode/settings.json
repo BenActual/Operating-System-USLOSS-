@@ -5,6 +5,7 @@
         "libuser.h": "c",
         "main.h": "c",
         "stdlib.h": "c",
-        "linkedlist.h": "c"
+        "linkedlist.h": "c",
+        "process.h": "c"
     }
 }

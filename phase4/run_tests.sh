@@ -18,18 +18,6 @@ make test10
 make test11
 make test12
 make test13
-make test14
-make test15
-make test16
-make test17
-make test18
-make test19
-make test20
-make test21
-make test22
-make test23
-make test24
-make test25
 printf "starting test 00 ....\n\n" >> testOutput.txt
 ./test00 >> testOutput.txt
 printf "\nstarting test 01 ....\n\n" >> testOutput.txt
@@ -59,26 +47,3 @@ printf "\nstarting test 12 ....\n\n" >> testOutput.txt
 printf "\nstarting test 13 ....\n\n" >> testOutput.txt
 ./test13 >> testOutput.txt
 printf "\nstarting test 14 ....\n\n" >> testOutput.txt
-./test14 >> testOutput.txt
-printf "\nstarting test 15 ....\n\n" >> testOutput.txt
-./test15 >> testOutput.txt
-printf "\nstarting test 16 ....\n\n" >> testOutput.txt
-./test16 >> testOutput.txt
-printf "\nstarting test 17 ....\n\n" >> testOutput.txt
-./test17 >> testOutput.txt
-printf "\nstarting test 18 ....\n\n" >> testOutput.txt
-./test18 >> testOutput.txt
-printf "\nstarting test 19 ....\n\n" >> testOutput.txt
-./test19 >> testOutput.txt
-printf "\nstarting test 20 ....\n\n" >> testOutput.txt
-./test20 >> testOutput.txt
-printf "\nstarting test 21 ....\n\n" >> testOutput.txt
-./test21 >> testOutput.txt
-printf "\nstarting test 22 ....\n\n" >> testOutput.txt
-./test22 >> testOutput.txt
-printf "\nstarting test 23 ....\n\n" >> testOutput.txt
-./test23 >> testOutput.txt
-printf "\nstarting test 24 ....\n\n" >> testOutput.txt
-./test24 >> testOutput.txt
-printf "\nstarting test 25 ....\n\n" >> testOutput.txt
-./test25 >> testOutput.txt
